@@ -1,10 +1,67 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+<html lang="en" style="margin:0;padding:0;height:100%;">
 
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>
+    <title>Hot news</title>
+</head>
+
+<body style="margin:0;padding:0;height:100%;scrollbar-width:none;-ms-overflow-style:none;">
+<div style="background: rgb(0, 0, 0);background: rgba(0, 0, 0, 0.1);overflow: hidden;">
+    <h3 style="float: left; color: #000000; text-align: center; padding: 5px 30px; margin: 0px;">
+        Hot news
+    </h3>
+</div>
+<div style="display: flex; flex-direction: column; margin: 0 auto; width: 700px;">
+    <div id="news-container" style="padding: 10px;">
+    </div>
+</div>
+
+<script language="javascript" type="text/javascript">
+
+    $(function () {
+
+        var conn = null;
+        connect();
+
+        function log(msg) {
+            var control = $('#news-container');
+            console.log(control.html());
+            control.html(control.html() + msg + '<br/>');
+            control.scrollTop(control.scrollTop() + 1000);
+        }
+
+        function connect() {
+
+            disconnect();
+
+            var wsUri = (window.location.protocol == 'https:' && 'wss://' || 'ws://') + window.location.host + "/ws";
+
+            conn = new WebSocket(wsUri);
+            conn.onopen = function () {
+                // do something
+            };
+            conn.onmessage = function (e) {
+                log(new Date().toISOString().split('T')[0] + ':');
+                log('New post: ' + e.data + '<br/>');
+            };
+            conn.onclose = function () {
+                conn = null;
+            };
+        }
+
+    function disconnect() {
+        if (conn != null) {
+            conn.close();
+            conn = null;
+        }
+    }
+
+    });
+
+  </script>
 </body>
+
 </html>
