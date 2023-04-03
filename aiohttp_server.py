@@ -2,57 +2,59 @@ import os
 
 from aiohttp import web
 
-WS_FILE = os.path.join(os.path.dirname(__file__), "/index.html")
-
-routes = web.RouteTableDef()
-
-
-@routes.post('/news')
-async def post_news(request):
-    if request.body_exists:
-        for web_socket in request.application["sockets"]:
-            await web_socket.send_str(await request.text())
-    return web.Response(status=200)
-
-
-@routes.get('/ws')
-async def websocket_handler(request):
-
-    response = web.WebSocketResponse(autoping=True, heartbeat=30)
-    available = response.can_prepare(request)
-    if not available:
-        with open(WS_FILE, "rb") as ws_file:
-            return web.Response(body=ws_file.read(), content_type="text/html")
-
-    await response.prepare(request)
-
-    try:
-        request.application["sockets"].append(response)
-
-        async for msg in response:
-            if msg.type == web.WSMsgType.TEXT:
-                for ws in request.application["sockets"]:
-                    if ws is not response:
-                        await ws.send_str(msg.data)
-            else:
-                return response
-        return response
-
-    finally:
-        request.application["sockets"].remove(response)
-
-
-async def on_shutdown(application: web.Application):
-    for web_socket in application["sockets"]:
-        await web_socket.close()
+WS_FILE = os.path.join(os.path.dirname(__file__), "index.html")
 
 
 def init():
-    application = web.Application()
-    application["sockets"] = []
-    application.add_routes(routes)
-    application.on_shutdown.append(on_shutdown)
-    web.run_app(application)
+    app = web.Application()
+    app["sockets"] = []
+    app.router.add_get("/", wshandler)
+    app.router.add_post("/news", post_add_news)
+    app.on_shutdown.append(on_shutdown)
+    return app
 
 
-init()
+async def post_add_news(request):
+    t = request.query['text']
+    for ws in request.app["sockets"]:
+        await ws.send_str(t)
+    return web.Response(text=t)
+
+
+async def wshandler(request: web.Request):
+    resp = web.WebSocketResponse(autoping=True, heartbeat=30)
+    available = resp.can_prepare(request)
+    if not available:
+        with open(WS_FILE, "rb") as fp:
+            return web.Response(body=fp.read(), content_type="text/html")
+
+    await resp.prepare(request)
+
+    await resp.send_str("Welcome on news portal.")
+
+    try:
+        for ws in request.app["sockets"]:
+            await ws.send_str("New user connected")
+        request.app["sockets"].append(resp)
+
+        async for msg in resp:
+            if msg.type == web.WSMsgType.TEXT:
+                for ws in request.app["sockets"]:
+                    if ws is not resp:
+                        await ws.send_str(msg.data)
+            else:
+                return resp
+        return resp
+
+    finally:
+        request.app["sockets"].remove(resp)
+        for ws in request.app["sockets"]:
+            await ws.send_str("User disconnected.")
+
+
+async def on_shutdown(app: web.Application):
+    for ws in app["sockets"]:
+        await ws.close()
+
+
+web.run_app(init())

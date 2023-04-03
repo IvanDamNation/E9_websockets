@@ -1,67 +1,85 @@
 <!DOCTYPE html>
-<html lang="en" style="margin:0;padding:0;height:100%;">
-
-<head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>
-    <title>Hot news</title>
+<meta charset="utf-8" />
+<html>
+    <head>
+        <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js">
+        </script>
+        <script language="javascript" type="text/javascript">
+        $(function () {
+            var conn = null;
+            function log(msg) {
+                var control = $('#log');
+                control.html(control.html() + msg + '<br/>');
+                control.scrollTop(control.scrollTop() + 1000);
+            }
+            function connect () {
+                disconnect(); // if error
+                var wsUri = (window.location.protocol=='https:'&&'wss://'||'ws://')+window.location.host;
+                conn = new WebSocket(wsUri); // open connection
+                log('Connecting...');
+                conn.onopen = function() {
+                    log('Connected');
+                    update_ui();
+                };
+                conn.onmessage = function (e) {
+                    const timeElapsed = Date.now();
+                    const today = new Date(timeElapsed);
+                    log(today.toLocaleTimeString() + ' Got news: ' + e.data);
+                };
+                conn.onclose = function() {
+                    log('Disconnected.');
+                    conn = null;
+                    update_ui();
+                };
+            }
+            function disconnect () {
+                if (conn != null) {
+                    log('Disconnecting...');
+                    conn.close();
+                    conn = null;
+                    update_ui();
+                }
+            }
+            function update_ui () {
+                if (conn == null) {
+                    $('#status').text('DISCONNECTED');
+                    $('#connect').html('Connect');
+                } else {
+                    $('#status').text('CONNECTED');
+                    $('#connect').html('Disconnect');
+                }
+            }
+            $('#connect').click(function () {
+                if (conn == null) {
+                    connect();
+            } else {
+                disconnect();
+            }
+            update_ui();
+            return false;
+            });
+        });
+    </script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css"
+          rel="stylesheet"
+          integrity="sha384-Zenh87qX5JnK2Jl0vWa8Ck2rdkQ2Bzep5IDxbcnCeuOxjzrPF/et3URy9Bv1WTRi"
+          crossorigin="anonymous">
 </head>
-
-<body style="margin:0;padding:0;height:100%;scrollbar-width:none;-ms-overflow-style:none;">
-<div style="background: rgb(0, 0, 0);background: rgba(0, 0, 0, 0.1);overflow: hidden;">
-    <h3 style="float: left; color: #000000; text-align: center; padding: 5px 30px; margin: 0px;">
-        Hot news
-    </h3>
-</div>
-<div style="display: flex; flex-direction: column; margin: 0 auto; width: 700px;">
-    <div id="news-container" style="padding: 10px;">
-    </div>
-</div>
-
-<script language="javascript" type="text/javascript">
-
-    $(function () {
-
-        var conn = null;
-        connect();
-
-        function log(msg) {
-            var control = $('#news-container');
-            console.log(control.html());
-            control.html(control.html() + msg + '<br/>');
-            control.scrollTop(control.scrollTop() + 1000);
-        }
-
-        function connect() {
-
-            disconnect();
-
-            var wsUri = (window.location.protocol == 'https:' && 'wss://' || 'ws://') + window.location.host + "/ws";
-
-            conn = new WebSocket(wsUri);
-            conn.onopen = function () {
-                // do something
-            };
-            conn.onmessage = function (e) {
-                log(new Date().toISOString().split('T')[0] + ':');
-                log('New post: ' + e.data + '<br/>');
-            };
-            conn.onclose = function () {
-                conn = null;
-            };
-        }
-
-    function disconnect() {
-        if (conn != null) {
-            conn.close();
-            conn = null;
-        }
-    }
-
-    });
-
-  </script>
-</body>
-
+    <body>
+        <div class="container">
+            <div class="row p-2 text-center">
+                <h3>News portal</h3>
+            </div>
+            <div class="row p-2">
+                <div class="col"><button id="connect" class="btn btn-primary">Connect</button></div>
+                <div class="col">Status: <span id="status">DISCONNECT</span></div>
+            </div>
+            <div class="row p-2">
+                <div id="log" class="p-3 border bg-light"></div>
+            </div>
+        </div>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"
+                integrity="sha384-OERcA2EqjJCMA+/3y+gxIOqMEjwtxJY7qPCqsdltbNJuaOe923+mo//f6V8Qbsw3"
+                crossorigin="anonymous"></script>
+    </body>
 </html>
